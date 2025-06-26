@@ -1,10 +1,30 @@
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-defaulticon-compatibility';
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
+import L from 'leaflet';
+import 'leaflet-routing-machine';
 import { stores } from '../data/stores';
 import { getDistanceFromLatLonInKm } from '../utils/distance';
+
+const Routing = ({ userPos, storePos }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!userPos || !storePos) return;
+
+    const routingControl = L.Routing.control({
+      waypoints: [L.latLng(userPos[0], userPos[1]), L.latLng(storePos[0], storePos[1])],
+      routeWhileDragging: false,
+      createMarker: () => null, // hide default markers
+    }).addTo(map);
+
+    return () => map.removeControl(routingControl);
+  }, [userPos, storePos, map]);
+
+  return null;
+};
 
 const LocationComponent = () => {
   const [location, setLocation] = useState({ latitude: null, longitude: null, error: null });
@@ -55,7 +75,7 @@ const LocationComponent = () => {
             )}
           </div>
 
-          <div className="h-[500px] w-full rounded-lg shadow border">
+          <div className="h-[500px] w-full rounded-lg shadow border mb-4">
             <MapContainer center={[latitude, longitude]} zoom={13} className="h-full w-full">
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
@@ -73,13 +93,25 @@ const LocationComponent = () => {
               ))}
 
               {nearestStore && (
-                <Polyline
-                  positions={[[latitude, longitude], [nearestStore.lat, nearestStore.lng]]}
-                  pathOptions={{ color: 'red' }}
+                <Routing
+                  userPos={[latitude, longitude]}
+                  storePos={[nearestStore.lat, nearestStore.lng]}
                 />
               )}
             </MapContainer>
           </div>
+
+          {/* Google Maps Direction Button */}
+          {nearestStore && (
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${nearestStore.lat},${nearestStore.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              📍 Open in Google Maps
+            </a>
+          )}
         </>
       ) : (
         <p className="text-gray-600">Getting location...</p>
